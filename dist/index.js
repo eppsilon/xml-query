@@ -3,49 +3,70 @@ var flatMap = function (arr, fn) {
     return Array.prototype.concat.apply([], arr.map(fn));
 };
 var xmlQuery = function (ast) {
-    var nodes = Array.isArray(ast) ? ast : (ast ? [ast] : []);
-    var length = nodes.length;
-    var get = function (index) { return nodes[index]; };
-    var children = function () {
-        return xmlQuery(flatMap(nodes, function (node) { return node.children; }));
+    return new XmlQuery(ast);
+};
+var XmlQuery = (function () {
+    function XmlQuery(ast) {
+        this.nodes = Array.isArray(ast) ? ast : (ast ? [ast] : []);
+        this.length = this.nodes.length;
+    }
+    XmlQuery.prototype.get = function (index) {
+        return this.nodes[index];
     };
-    var findInNode = function (node, sel) {
+    XmlQuery.prototype.children = function () {
+        return xmlQuery(flatMap(this.nodes, function (node) { return node.children; }));
+    };
+    XmlQuery.prototype.findInNode = function (node, sel) {
+        var _this = this;
         var res = (node.name === sel) ? [node] : [];
-        return res.concat(flatMap(node.children, function (node) { return findInNode(node, sel); }));
+        return res.concat(flatMap(node.children, function (node) { return _this.findInNode(node, sel); }));
     };
-    var find = function (sel) {
-        return xmlQuery(flatMap(nodes, function (node) { return findInNode(node, sel); }));
+    XmlQuery.prototype.find = function (sel) {
+        var _this = this;
+        return xmlQuery(flatMap(this.nodes, function (node) { return _this.findInNode(node, sel); }));
     };
-    var has = function (sel) {
-        if (nodes.length === 0) {
+    XmlQuery.prototype.has = function (sel) {
+        if (this.nodes.length === 0) {
             return false;
         }
-        if (nodes.some(function (node) { return node.name === sel; })) {
+        if (this.nodes.some(function (node) { return node.name === sel; })) {
             return true;
         }
-        return children().has(sel);
+        return this.children().has(sel);
     };
-    var attr = function (name) {
-        if (length) {
-            var attrs = nodes[0].attributes;
+    XmlQuery.prototype.attr = function (name) {
+        if (this.length) {
+            var attrs = this.nodes[0].attributes;
             return name ? attrs[name] : attrs;
         }
     };
-    var eq = function (index) { return xmlQuery(nodes[index]); };
-    var first = function () { return eq(0); };
-    var last = function () { return eq(length - 1); };
-    var map = function (fn) { return nodes.map(fn); };
-    var each = function (fn) { return nodes.forEach(fn); };
-    var size = function () { return length; };
-    var prop = function (name) {
-        var node = get(0);
+    XmlQuery.prototype.eq = function (index) {
+        return xmlQuery(this.nodes[index]);
+    };
+    XmlQuery.prototype.first = function () {
+        return this.eq(0);
+    };
+    XmlQuery.prototype.last = function () {
+        return this.eq(this.length - 1);
+    };
+    XmlQuery.prototype.map = function (fn) {
+        return this.nodes.map(fn);
+    };
+    XmlQuery.prototype.each = function (fn) {
+        return this.nodes.forEach(fn);
+    };
+    XmlQuery.prototype.size = function () {
+        return this.length;
+    };
+    XmlQuery.prototype.prop = function (name) {
+        var node = this.get(0);
         if (node) {
             return node[name];
         }
     };
-    var text = function () {
+    XmlQuery.prototype.text = function () {
         var res = '';
-        each(function (node) {
+        this.each(function (node) {
             if (node.type === 'text') {
                 res += node.value;
             }
@@ -55,21 +76,6 @@ var xmlQuery = function (ast) {
         });
         return res;
     };
-    return {
-        attr: attr,
-        children: children,
-        each: each,
-        eq: eq,
-        find: find,
-        has: has,
-        first: first,
-        get: get,
-        last: last,
-        length: length,
-        map: map,
-        prop: prop,
-        size: size,
-        text: text,
-    };
-};
+    return XmlQuery;
+}());
 module.exports = xmlQuery;

@@ -7,105 +7,129 @@
 const flatMap = (arr: any[], fn: (v: any, i: number, a: any[]) => any) =>
     Array.prototype.concat.apply([], arr.map(fn));
 
-const xmlQuery = (ast: xmlQuery.XmlNode | xmlQuery.XmlNode[]) => {
+const xmlQuery = (ast: xmlQuery.XmlNode | xmlQuery.XmlNode[]): xmlQuery.XmlQuery => {
+    return new XmlQuery(ast);
+}
 
-    const nodes = Array.isArray(ast) ? ast : (ast ? [ast] : []);
-    const length = nodes.length;
+class XmlQuery implements xmlQuery.XmlQuery {
+    private nodes: xmlQuery.XmlNode[];
+    private length: number;
+
+    constructor(ast: xmlQuery.XmlNode | xmlQuery.XmlNode[]) {
+        this.nodes = Array.isArray(ast) ? ast : (ast ? [ast] : []);
+        this.length = this.nodes.length;
+    }
 
     /**
      * Retrieve one of the elements
      */
-    const get = (index: number) => nodes[index];
+    get(index: number) {
+        return this.nodes[index];
+    }
 
     /**
      * Returns a new xmlQuery object containing the children of the top level elements
      */
-    const children = () =>
-        xmlQuery(flatMap(nodes, (node) => node.children));
+    children() {
+        return xmlQuery(flatMap(this.nodes, (node) => node.children));
+    }
 
     /**
      * Recursively find by name starting in the provided node
      */
-    const findInNode = (node: xmlQuery.XmlNode, sel: string) => {
+    findInNode(node: xmlQuery.XmlNode, sel: string) {
         const res = (node.name === sel) ? [node] : [];
-        return res.concat(flatMap(node.children, (node) => findInNode(node, sel)));
-    };
+        return res.concat(flatMap(node.children, (node) => this.findInNode(node, sel)));
+    }
 
     /**
      * Find by name. Including top level nodes and all its children.
      */
-    const find = (sel: string) =>
-        xmlQuery(flatMap(nodes, (node) => findInNode(node, sel)));
+    find(sel: string) {
+        return xmlQuery(flatMap(this.nodes, (node) => this.findInNode(node, sel)));
+    }
 
     /**
      * Returns true if it has the given element. Faster than find because it stops on first occurence.
      */
-    const has = (sel: string) => {
-        if (nodes.length === 0) {
+    has(sel: string) {
+        if (this.nodes.length === 0) {
             return false;
         }
-        if (nodes.some((node) => node.name === sel)) {
+        if (this.nodes.some((node) => node.name === sel)) {
             return true;
         }
-        return children().has(sel);
+        return this.children().has(sel);
     }
 
     /**
      * Get all attributes. If a name is provided, it returns the value for that key
      */
-    const attr = (name?: string) => {
-        if (length) {
-            const attrs = nodes[0].attributes;
+    attr(name?: string) {
+        if (this.length) {
+            const attrs = this.nodes[0].attributes;
             return name ? attrs[name] : attrs;
         }
-    };
+    }
 
     /**
      * Returns a new XmlQuery object for the selected element by index
      */
-    const eq = (index: number) => xmlQuery(nodes[index]);
+    eq(index: number) {
+        return xmlQuery(this.nodes[index]);
+    }
 
     /**
      * Returns a new XmlQuery object for the first element
      */
-    const first = () => eq(0);
+    first() {
+        return this.eq(0);
+    }
 
     /**
      * Returns a new XmlQuery object for the last element
      */
-    const last = () => eq(length - 1);
+    last() {
+        return this.eq(this.length - 1);
+    }
 
     /**
      * Iterate over a xmlQuery object, executing a function for each element. Returns the results in an array.
      */
-    const map = (fn: (v: xmlQuery.XmlNode, i: number, a: xmlQuery.XmlNode[]) => any) => nodes.map(fn);
+    map(fn: (v: xmlQuery.XmlNode, i: number, a: xmlQuery.XmlNode[]) => any) {
+        return this.nodes.map(fn);
+    }
 
     /**
      * Iterate over a xmlQuery object, executing a function for each element
      */
-    const each = (fn: (v: xmlQuery.XmlNode, i: number, a: xmlQuery.XmlNode[]) => void) => nodes.forEach(fn);
+    each(fn: (v: xmlQuery.XmlNode, i: number, a: xmlQuery.XmlNode[]) => void) {
+        return this.nodes.forEach(fn);
+    }
 
     /**
      * Get length
      */
-    const size = () => length;
+    size() {
+        return this.length;
+    }
 
     /**
      * Get the value of a property for the first element in the set
      */
-    const prop = (name: string) => {
-        const node = get(0);
+    prop(name: string) {
+        const node = this.get(0);
         if (node) {
             return node[name];
         }
-    };
+    }
 
     /**
      * Get the combined text contents of each element, including their descendants
      */
-    const text = () => {
+    text() {
         let res = '';
-        each(node => {
+        this.each(node => {
             if (node.type === 'text') {
                 res += node.value;
             } else {
@@ -113,28 +137,10 @@ const xmlQuery = (ast: xmlQuery.XmlNode | xmlQuery.XmlNode[]) => {
             }
         });
         return res;
-    };
-
-    return {
-        attr,
-        children,
-        each,
-        eq,
-        find,
-        has,
-        first,
-        get,
-        last,
-        length,
-        map,
-        prop,
-        size,
-        text,
-    };
-};
+    }
+}
 
 namespace xmlQuery {
-
     export interface XmlNode {
         name: string;
         type: string;
@@ -142,6 +148,78 @@ namespace xmlQuery {
         parent: XmlNode;
         attributes: { [name: string]: string };
         children: XmlNode[];
+    }
+
+    export interface XmlQuery {
+        /**
+         * Retrieve one of the elements
+         */
+        get(index: number): XmlNode;
+
+        /**
+         * Returns a new xmlQuery object containing the children of the top level elements
+         */
+        children(): XmlQuery;
+
+        /**
+         * Recursively find by name starting in the provided node
+         */
+        findInNode(node: XmlNode, sel: string);
+
+        /**
+         * Find by name. Including top level nodes and all its children.
+         */
+        find(sel: string): XmlQuery;
+
+        /**
+         * Returns true if it has the given element. Faster than find because it stops on first occurence.
+         */
+        has(sel: string): boolean;
+
+        /**
+         * Get all attributes. If a name is provided, it returns the value for that key
+         */
+        attr(name?: string): { [key: string]: string } | string;
+
+        /**
+         * Returns a new XmlQuery object for the selected element by index
+         */
+        eq(index: number): XmlQuery;
+
+        /**
+         * Returns a new XmlQuery object for the first element
+         */
+        first(): XmlQuery;
+
+        /**
+         * Returns a new XmlQuery object for the last element
+         */
+        last(): XmlQuery;
+
+        /**
+         * Iterate over a xmlQuery object, executing a function for each element. Returns the results in an array.
+         */
+        map(fn: (v: XmlNode, i: number, a: XmlNode[]) => any);
+
+        /**
+         * Iterate over a xmlQuery object, executing a function for each element
+         */
+        each(fn: (v: XmlNode, i: number, a: XmlNode[]) => void): void;
+
+        /**
+         * Get length
+         */
+        size(): number;
+
+        /**
+         * Get the value of a property for the first element in the set
+         */
+        prop(name: string): string;
+
+        /**
+         * Get the combined text contents of each element, including their descendants
+         */
+        text(): string;
     }
 }
 

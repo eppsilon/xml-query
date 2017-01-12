@@ -1,21 +1,4 @@
-declare const xmlQuery: (ast: xmlQuery.XmlNode | xmlQuery.XmlNode[]) => {
-    attr: (name?: string) => string | {
-        [name: string]: string;
-    };
-    children: () => any;
-    each: (fn: (v: xmlQuery.XmlNode, i: number, a: xmlQuery.XmlNode[]) => void) => void;
-    eq: (index: number) => any;
-    find: (sel: string) => any;
-    has: (sel: string) => any;
-    first: () => any;
-    get: (index: number) => xmlQuery.XmlNode;
-    last: () => any;
-    length: number;
-    map: (fn: (v: xmlQuery.XmlNode, i: number, a: xmlQuery.XmlNode[]) => any) => any[];
-    prop: (name: string) => any;
-    size: () => number;
-    text: () => string;
-};
+declare const xmlQuery: (ast: xmlQuery.XmlNode | xmlQuery.XmlNode[]) => xmlQuery.XmlQuery;
 declare namespace xmlQuery {
     interface XmlNode {
         name: string;
@@ -26,6 +9,24 @@ declare namespace xmlQuery {
             [name: string]: string;
         };
         children: XmlNode[];
+    }
+    interface XmlQuery {
+        get(index: number): XmlNode;
+        children(): XmlQuery;
+        findInNode(node: XmlNode, sel: string): any;
+        find(sel: string): XmlQuery;
+        has(sel: string): boolean;
+        attr(name?: string): {
+            [key: string]: string;
+        } | string;
+        eq(index: number): XmlQuery;
+        first(): XmlQuery;
+        last(): XmlQuery;
+        map(fn: (v: XmlNode, i: number, a: XmlNode[]) => any): any;
+        each(fn: (v: XmlNode, i: number, a: XmlNode[]) => void): void;
+        size(): number;
+        prop(name: string): string;
+        text(): string;
     }
 }
 export = xmlQuery;
